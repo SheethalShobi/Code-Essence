@@ -1,0 +1,9 @@
+flask
+boto3
+langchain
+langchain-community
+gitpython
+langchain-aws
+redis
+transformers
+Authlib
