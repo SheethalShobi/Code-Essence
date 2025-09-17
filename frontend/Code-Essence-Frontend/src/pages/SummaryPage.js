@@ -98,38 +98,57 @@ export default function SummaryPage() {
 };
 
 const renderSummary = (data, level = 0) => {
-    if (typeof data === "string") {
-      return <Typography sx={{ whiteSpace: "pre-wrap", ml: level * 3 }}>{data}</Typography>;
-    }
+  if (!data) return null;
 
-    return Object.entries(data).map(([key, value]) => {
-      const isFolder = typeof value === "object";
-      const expanded = expandedFolders[key] || false;
+  // If it's a plain string, just show it nicely
+  if (typeof data === "string") {
+    const cleaned = data
+      .replace(/\n+/g, " ")   // remove line breaks
+      .replace(/\t+/g, " ")   // remove tabs
+      .replace(/\s\s+/g, " "); // collapse extra spaces
 
-      return (
-        <Box key={key} sx={{ mb: 1 }}>
-          <Box sx={{ display: "flex", alignItems: "center", cursor: isFolder ? "pointer" : "default", ml: level * 3 }}>
-            {isFolder && (
-              <IconButton size="small" onClick={() => toggleFolder(key)} sx={{ color: "limegreen" }}>
-                {expanded ? <ExpandLess /> : <ExpandMore />}
-              </IconButton>
-            )}
-            <Typography sx={{ fontWeight: isFolder ? "bold" : "normal", color: isFolder ? "limegreen" : "#e0f2f1" }}>
-              {key}
-            </Typography>
-          </Box>
-          {isFolder && (
-            <Collapse in={expanded} timeout="auto" unmountOnExit>
-              <Box sx={{ borderLeft: "1px solid #333", pl: 2, mt: 1 }}>
-                {renderSummary(value, level + 1)}
-              </Box>
-            </Collapse>
-          )}
-          {!isFolder && <Typography sx={{ ml: level * 3 + 3, whiteSpace: "pre-wrap", color: "#e0f2f1" }}>{value}</Typography>}
-        </Box>
-      );
-    });
-  };
+    return (
+      <Typography sx={{ ml: level * 2, mb: 1, color: "#e0f2f1", lineHeight: 1.6 }}>
+        {cleaned}
+      </Typography>
+    );
+  }
+
+  // If it's an object, iterate through keys
+  return Object.entries(data).map(([key, value], idx) => {
+    const cleaned =
+      typeof value === "string"
+        ? value.replace(/\n+/g, " ").replace(/\t+/g, " ").replace(/\s\s+/g, " ")
+        : null;
+
+    return (
+      <Box key={idx} sx={{ ml: level * 2, mb: 1 }}>
+        <Typography sx={{ fontWeight: "bold", color: "limegreen" }}>
+          {key}:
+        </Typography>
+
+        {cleaned ? (
+          <Typography sx={{ ml: 2, color: "#e0f2f1", lineHeight: 1.6 }}>
+            {cleaned}
+          </Typography>
+        ) : (
+          <Box sx={{ backgroundColor: "#222", p: 2, borderRadius: 1, minHeight: 300 }}>
+  {loading ? (
+    <CircularProgress color="inherit" />
+  ) : typeof summary === "string" ? (
+    <Typography sx={{ whiteSpace: "pre-wrap", color: "#e0f2f1" }}>
+      {summary}
+    </Typography>
+  ) : (
+    renderSummary(summary)
+  )}
+</Box>
+
+        )}
+      </Box>
+    );
+  });
+};
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: "black", color: "white" }}>
