@@ -1,0 +1,38 @@
+# Node.js dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Python virtual environments
+venv/
+.venv/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build outputs
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# IDE / Editor stuff
+.vscode/
+.idea/
+*.swp
+
+# Mac / OS files
+.DS_Store
+
+# Coverage / test files
+.coverage
+*.py,cover
+coverage/

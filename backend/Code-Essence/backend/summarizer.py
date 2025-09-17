@@ -1,12 +1,14 @@
 import os
 import shutil
 import tempfile
+from dotenv import load_dotenv
 from git import Repo
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.summarize import load_summarize_chain
 from langchain_aws import ChatBedrock
 import boto3
 
+load_dotenv()
 # Load GitHub token from env
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
@@ -35,18 +37,22 @@ FILE_PROMPTS = {
 
 IGNORE_DIRS = {".git", ".github", "__pycache__", "node_modules", ".venv", "venv"}
 IGNORE_FILES = {".gitignore", ".gitattributes", "LICENSE"}
-ALLOWED_EXTENSIONS = {".py", ".js", ".ts", ".jsx", ".tsx", ".sql", ".yaml", ".yml", "dockerfile", "requirements.txt", "readme.md"}
+ALLOWED_EXTENSIONS = {
+    ".py", ".js", ".ts", ".jsx", ".tsx", ".sql", ".yaml", ".yml",
+    "dockerfile", "requirements.txt", "readme.md"
+}
 
 REPO_PROMPT = """
     You are a senior software engineer. Explain the functionality of the code to a junior developer.
     {docs}
-    Describe in 2-3 sentences, max 150 words, focusing on functionality, tech stack, tools, frameworks.
+    Describe in 5 sentences, max 400 words, focusing on functionality, tech stack, tools, frameworks.
+    Explain everything in detail but in a crisp and concise way.
+    Output a clean summary **without newline (\n), tab (\t), or extra spaces**.  
+    Format as: - Key points separated by periods. - No code blocks, no JSON.
 """
 
 def clone_repo(repo_url, dest_dir):
-    """
-    Clone a GitHub repo using token authentication to avoid username/password prompts
-    """
+    """Clone a GitHub repo using token authentication"""
     url = repo_url
     if GITHUB_TOKEN and repo_url.startswith("https://github.com"):
         url = repo_url.replace(
@@ -56,16 +62,35 @@ def clone_repo(repo_url, dest_dir):
     Repo.clone_from(url, dest_dir)
 
 def should_ignore_file(file_name):
-    return file_name.lower() not in ALLOWED_EXTENSIONS and not any(file_name.lower().endswith(ext) for ext in ALLOWED_EXTENSIONS)
+    return file_name.lower() not in ALLOWED_EXTENSIONS and not any(
+        file_name.lower().endswith(ext) for ext in ALLOWED_EXTENSIONS
+    )
 
 def summarize_content(file_name, content, file_type):
     prompt = FILE_PROMPTS.get(file_type.lower(), "Summarize source code file briefly.")
-    docs = splitter.create_documents([f"{REPO_PROMPT}\n\n{content}"])
-    chain = load_summarize_chain(llm, chain_type="map_reduce")
-    result = chain.invoke(docs)
-    if isinstance(result, dict) and "output_text" in result:
-        return result["output_text"]
-    return str(result)
+    try:
+        full_prompt = f"""
+        You are a senior engineer. Summarize this {file_type} file for documentation.
+        
+        File: {file_name}
+        Instructions: {prompt}
+        
+        Code/content:
+        {content[:4000]}  # truncate if huge
+        """
+
+        response = llm.invoke(full_prompt)  # direct Bedrock call
+        if hasattr(response, "content"):
+            return response.content.strip()
+        elif isinstance(response, str):
+            return response.strip()
+        else:
+            return str(response)
+
+    except Exception as e:
+        print(f"[ERROR] Summarization failed for {file_name}: {e}")
+        return f"[FAILED SUMMARY] {file_name}"
+
 
 def summarize_repo(repo_url, level="repo"):
     temp_dir = tempfile.mkdtemp()
@@ -114,6 +139,12 @@ def summarize_repo(repo_url, level="repo"):
                         continue
             print("[INFO] Summarizing entire repository...")
             summaries["repo_summary"] = summarize_content("entire_repo", all_content, "source")
-        return summaries
+
+        return {
+            "repo_url": repo_url,
+            "level": level,
+            "summaries": summaries
+        }
     finally:
-        shutil.rmtree(temp_dir)
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        

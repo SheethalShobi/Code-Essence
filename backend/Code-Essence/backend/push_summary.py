@@ -42,4 +42,4 @@ def push_summary_to_repo(repo_url, branch="main", summary_file="SUMMARY.md"):
         shutil.rmtree(temp_dir)
 
 # Example usage
-push_summary_to_repo("https://github.com/SheethalShobi/Project")
+# push_summary_to_repo("https://github.com/SheethalShobi/Project")

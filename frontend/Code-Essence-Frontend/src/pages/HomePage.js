@@ -25,6 +25,11 @@ export default function HomePage() {
     navigate("/snippet");
   };
 
+  const goDependencyGraph = () => {
+    if (!repoUrl.trim()) return;
+    navigate("/dependency-graph", { state: { repoUrl } });
+  };
+
   return (
     <Box
       sx={{
@@ -86,6 +91,13 @@ export default function HomePage() {
           sx={{ backgroundColor: "#4caf50", color: "black", fontWeight: "bold" }}
         >
           Snippet Summary
+        </Button>
+        <Button
+          onClick={goDependencyGraph}
+          variant="contained"
+          sx={{ backgroundColor: "#0c610cff", color: "white", fontWeight: "bold" }}
+        >
+          Dependency Graph
         </Button>
       </Box>
 

@@ -91,4 +91,4 @@ def analyze_repo_health(repo_url):
             "root_details": root_details
         }
     finally:
-        shutil.rmtree(temp_dir)
+        shutil.rmtree(temp_dir, ignore_errors=true)

@@ -5,6 +5,7 @@ import api, { API_BASE } from "../api";
 import FilePicker from "../shared/FilePicker";
 import { jsPDF } from "jspdf";
 
+
 export default function SummaryPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -14,10 +15,16 @@ export default function SummaryPage() {
   const [level, setLevel] = useState("repo"); // repo | folder | file
   const [selectedFile, setSelectedFile] = useState("");
   const [showFilePicker, setShowFilePicker] = useState(false);
+  const [expandedFolders, setExpandedFolders] = useState({});
 
   useEffect(() => {
     document.body.style.backgroundColor = "#000";
   }, []);
+
+  const toggleFolder = (folder) => {
+    setExpandedFolders((prev) => ({ ...prev, [folder]: !prev[folder] }));
+  };
+
 
   const fetchSummary = async (targetLevel = "repo", fileName = "") => {
     if (!repoUrl) return alert("No repo URL provided.");
@@ -65,19 +72,63 @@ export default function SummaryPage() {
   };
 
   const savePDF = () => {
-    const doc = new jsPDF();
-    const lines = typeof summary === "string" ? summary.split("\n") : JSON.stringify(summary, null, 2).split("\n");
-    let y = 10;
-    const pageHeight = doc.internal.pageSize.height;
-    lines.forEach((line) => {
-      doc.text(String(line), 10, y);
-      y += 7;
-      if (y > pageHeight - 10) {
-        doc.addPage();
-        y = 10;
-      }
+  const doc = new jsPDF();
+  const pageHeight = doc.internal.pageSize.height;
+  const pageWidth = doc.internal.pageSize.width;
+
+  // normalize summary into string
+  const text = typeof summary === "string" 
+    ? summary 
+    : JSON.stringify(summary, null, 2);
+
+  // split text into wrapped lines that fit the page width
+  const lines = doc.splitTextToSize(text, pageWidth - 20);
+
+  let y = 10;
+  lines.forEach((line) => {
+    doc.text(line, 10, y);
+    y += 7;
+    if (y > pageHeight - 10) {
+      doc.addPage();
+      y = 10;
+    }
+  });
+
+  doc.save("summary.pdf");
+};
+
+const renderSummary = (data, level = 0) => {
+    if (typeof data === "string") {
+      return <Typography sx={{ whiteSpace: "pre-wrap", ml: level * 3 }}>{data}</Typography>;
+    }
+
+    return Object.entries(data).map(([key, value]) => {
+      const isFolder = typeof value === "object";
+      const expanded = expandedFolders[key] || false;
+
+      return (
+        <Box key={key} sx={{ mb: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", cursor: isFolder ? "pointer" : "default", ml: level * 3 }}>
+            {isFolder && (
+              <IconButton size="small" onClick={() => toggleFolder(key)} sx={{ color: "limegreen" }}>
+                {expanded ? <ExpandLess /> : <ExpandMore />}
+              </IconButton>
+            )}
+            <Typography sx={{ fontWeight: isFolder ? "bold" : "normal", color: isFolder ? "limegreen" : "#e0f2f1" }}>
+              {key}
+            </Typography>
+          </Box>
+          {isFolder && (
+            <Collapse in={expanded} timeout="auto" unmountOnExit>
+              <Box sx={{ borderLeft: "1px solid #333", pl: 2, mt: 1 }}>
+                {renderSummary(value, level + 1)}
+              </Box>
+            </Collapse>
+          )}
+          {!isFolder && <Typography sx={{ ml: level * 3 + 3, whiteSpace: "pre-wrap", color: "#e0f2f1" }}>{value}</Typography>}
+        </Box>
+      );
     });
-    doc.save("summary.pdf");
   };
 
   return (
@@ -102,11 +153,8 @@ export default function SummaryPage() {
 
         <Divider sx={{ bgcolor: "#333", my: 1 }} />
 
-        <Button variant="contained" onClick={handlePush} sx={{ backgroundColor: "#0d47a1", color: "white" }}>
-          Push Summary
-        </Button>
-
-        <Button variant="contained" onClick={savePDF} sx={{ backgroundColor: "#f9a825", color: "black" }}>
+        
+        <Button variant="contained" onClick={savePDF} sx={{ backgroundColor: "#2cb555ff", color: "black" }}>
           Save PDF
         </Button>
 
@@ -115,16 +163,26 @@ export default function SummaryPage() {
         </Button>
       </Box>
 
+
       {/* Content */}
       <Box sx={{ flex: 1, p: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: "bold", mb: 2 }}>
           {selectedFile ? `File: ${selectedFile}` : "Project / Folder Summary"}
         </Typography>
-
-        <Box sx={{ backgroundColor: "#222", p: 2, borderRadius: 1, minHeight: 300 }}>
-          {loading ? <CircularProgress color="inherit" /> : <pre style={{ whiteSpace: "pre-wrap", color: "#e0f2f1" }}>{summary || "No summary yet. Click a button."}</pre>}
-        </Box>
+       
       </Box>
+      <Box sx={{ backgroundColor: "#222", p: 2, borderRadius: 1, minHeight: 300 }}>
+        {loading ? (
+          <CircularProgress color="inherit" />
+        ) : summary && typeof summary === "object" && summary.summaries ? (
+          <SummaryTree data={summary.summaries} />
+        ) : (   
+          <Typography sx={{ whiteSpace: "pre-wrap", color: "#e0f2f1" }}>
+            {summary || "No summary yet. Click a button."}
+          </Typography>   
+        )}
+      </Box>
+
 
       {/* File Picker Modal */}
       {showFilePicker && (

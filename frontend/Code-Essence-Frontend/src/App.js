@@ -6,6 +6,7 @@ import HealthPage from "./pages/HealthPage";
 import SnippetPage from "./pages/SnippetPage";
 import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
+import DependencyGraph from "./pages/DependencyGraph";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
       <Route path="/snippet" element={<SnippetPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/dependency-graph" element={<DependencyGraph />} />
     </Routes>
   );
 }
