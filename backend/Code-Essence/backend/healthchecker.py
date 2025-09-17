@@ -31,6 +31,38 @@ def analyze_repo_health(repo_url):
         overall_score = 0
         overall_max_score = 0
 
+        # ---- Check root as a project ----
+        root_report = []
+        root_score = 0
+        root_max = 10
+
+        entry_point = find_entry_point(temp_dir)
+        if entry_point:
+            root_report.append(f"Found entry point: {os.path.basename(entry_point)} → +2")
+            root_score += 2
+
+        dep_files = find_dependency_files(temp_dir)
+        if dep_files:
+            root_report.append(f"Dependency file found: {', '.join(os.path.basename(f) for f in dep_files)} → +2")
+            root_score += 2
+        else:
+            root_report.append("No dependency file found → 0 points")
+
+        if any(f in os.listdir(temp_dir) for f in ["src", "app", "backend", "frontend", "services"]):
+            root_report.append("Recognizable folder layout → +2")
+            root_score += 2
+
+        if root_report:
+            projects["root"] = {
+                "details": root_report,
+                "score": root_score,
+                "max_score": root_max,
+                "status": "Healthy project" if entry_point else "Incomplete"
+            }
+            overall_score += root_score
+            overall_max_score += root_max
+
+        # ---- Subproject checks ----
         subprojects = []
         for d in os.listdir(temp_dir):
             folder_path = os.path.join(temp_dir, d)
@@ -71,7 +103,7 @@ def analyze_repo_health(repo_url):
             overall_score += score
             overall_max_score += max_score
 
-        # Root-level checks
+        # ---- Root-level bonuses ----
         root_bonus = 0
         root_details = []
         if find_readme(temp_dir):
@@ -91,4 +123,4 @@ def analyze_repo_health(repo_url):
             "root_details": root_details
         }
     finally:
-        shutil.rmtree(temp_dir, ignore_errors=true)
+        shutil.rmtree(temp_dir, ignore_errors=True)
